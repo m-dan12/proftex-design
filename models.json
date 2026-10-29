@@ -1,0 +1,42 @@
+{
+  "_note": "Цены ориентировочные: сверить с platform.openai.com/pricing до S-17. Цены токенов — USD за 1 млн токенов, запасная цена — USD за одну картинку по качеству. Меняется перезапуском без пересборки.",
+  "default_model": "gpt-image-2.5-sunburst",
+  "models": [
+    {
+      "id": "gpt-image-2.5-sunburst",
+      "title": "GPT Image 2.5 Sunburst",
+      "qualities": ["low", "medium", "high", "max"],
+      "default_quality": "high",
+      "sizes": ["auto", "1024x1024", "1536x1024", "1024x1536"],
+      "output_formats": ["jpeg", "png", "webp"],
+      "supports_input_fidelity": true,
+      "max_n": 4,
+      "prices_usd_per_1m_tokens": {"text_in": 5, "image_in": 8, "image_out": 32},
+      "fallback_per_image_usd": {"low": 0.01, "medium": 0.04, "high": 0.16, "max": 0.3}
+    },
+    {
+      "id": "gpt-image-1",
+      "title": "GPT Image 1 (запасная)",
+      "qualities": ["low", "medium", "high"],
+      "default_quality": "high",
+      "sizes": ["auto", "1024x1024", "1536x1024", "1024x1536"],
+      "output_formats": ["jpeg", "png", "webp"],
+      "supports_input_fidelity": true,
+      "max_n": 4,
+      "prices_usd_per_1m_tokens": {"text_in": 5, "image_in": 10, "image_out": 40},
+      "fallback_per_image_usd": {"low": 0.011, "medium": 0.042, "high": 0.167}
+    },
+    {
+      "id": "gpt-image-1-mini",
+      "title": "GPT Image 1 mini (дешёвые черновики)",
+      "qualities": ["low", "medium", "high"],
+      "default_quality": "medium",
+      "sizes": ["auto", "1024x1024", "1536x1024", "1024x1536"],
+      "output_formats": ["jpeg", "png", "webp"],
+      "supports_input_fidelity": false,
+      "max_n": 4,
+      "prices_usd_per_1m_tokens": {"text_in": 2, "image_in": 2.5, "image_out": 8},
+      "fallback_per_image_usd": {"low": 0.005, "medium": 0.011, "high": 0.036}
+    }
+  ]
+}
