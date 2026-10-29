@@ -1,0 +1,23 @@
+# Блок для design.proftex.tech. Дописывается в конец существующего Caddyfile
+# (или подключается через `import`); блок ops.proftex.tech не трогаем.
+# Перед перезагрузкой: deploy/caddy_check.sh <путь к Caddyfile> (копия + caddy validate + diff).
+design.proftex.tech {
+	# 10 референсов по 20 МБ плюс поля формы.
+	request_body {
+		max_size 210MB
+	}
+
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "same-origin"
+		-Server
+	}
+
+	# Caddy на хосте (systemd): контейнер опубликован на 127.0.0.1:8000.
+	# Caddy в Docker: подключить его контейнер к сети design-net и заменить адрес на design-studio:8000.
+	# Caddy сам выставляет X-Forwarded-For по адресу клиента, присланный клиентом заголовок не пропускает.
+	reverse_proxy 127.0.0.1:8000
+}
