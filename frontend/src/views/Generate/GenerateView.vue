@@ -5,7 +5,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiError, api, createGeneration, unwrap, type Generation, type ModelInfo, type ModelsResponse } from '@/api/client'
-import { formatUsd } from '@/utils/format'
+import { formatMoney } from '@/utils/format'
 import GalleryPicker from './GalleryPicker.vue'
 import ReferenceZone from './ReferenceZone.vue'
 import ResultBatch from './ResultBatch.vue'
@@ -306,7 +306,7 @@ onUnmounted(() => {
           <button type="submit" class="btn btn-primary" :disabled="busy || !model">
             {{ busy ? 'Отправляю…' : 'Сгенерировать' }}
           </button>
-          <span v-if="model" class="muted price" data-testid="price">≈ {{ formatUsd(price) }}</span>
+          <span v-if="model" class="muted price" data-testid="price">≈ {{ formatMoney(price) }}</span>
         </div>
       </form>
 

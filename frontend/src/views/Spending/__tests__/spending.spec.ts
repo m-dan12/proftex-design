@@ -7,7 +7,8 @@ import { server } from '@/mocks/node'
 import { MOCK_ACCOUNTS } from '@/mocks/db'
 import { auth } from '@/stores/auth'
 import { mountApp, settle } from '@/__tests__/helpers'
-import { formatMoney, pluralWorks } from '../money'
+import { formatMoney } from '@/utils/format'
+import { pluralWorks } from '../money'
 import { customRangeError, fillDays, presetRange, shortDay, tickIndexes } from '../period'
 
 const NOW = new Date('2026-10-30T12:00:00')

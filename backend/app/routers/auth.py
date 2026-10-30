@@ -20,7 +20,6 @@ from pydantic import BaseModel, Field
 from app.config import Settings, get_settings, setup_logging
 from app.db import get_db, init_db
 from app.deps import (
-    ApiRoute,
     CurrentUser,
     clear_session_cookie,
     current_user,
@@ -51,7 +50,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-router = APIRouter(route_class=ApiRoute, lifespan=lifespan)
+router = APIRouter(lifespan=lifespan)
 
 
 # --- Лимит попыток входа -------------------------------------------------------

@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { api, ApiError, unwrap, type AdminSpending } from '@/api/client'
-import { formatUsd, isoDate } from '@/utils/format'
+import { formatMoney, isoDate } from '@/utils/format'
 
 type Preset = 'today' | '7' | '30' | 'custom'
 type Group = AdminSpending['group']
@@ -72,8 +72,6 @@ async function load(): Promise<void> {
 
 watch(query, load, { immediate: true })
 
-/** Маленькие суммы с четырьмя знаками, чтобы не превращались в $0.00. */
-const usd = (micro: number) => formatUsd(micro, micro > 0 && micro < 10_000 ? 4 : 2)
 </script>
 
 <template>
@@ -113,7 +111,7 @@ const usd = (micro: number) => formatUsd(micro, micro > 0 && micro < 10_000 ? 4 
       <p v-if="periodError" class="error" role="alert">{{ periodError }}</p>
       <div class="summary">
         <p class="total" data-testid="spend-total" :data-micro="data?.total_micro_usd ?? 0">
-          Итого: <b>{{ usd(data?.total_micro_usd ?? 0) }}</b>
+          Итого: <b>{{ formatMoney(data?.total_micro_usd ?? 0) }}</b>
           <span class="muted"> · генераций: {{ data?.count ?? 0 }}</span>
         </p>
         <a
@@ -147,7 +145,7 @@ const usd = (micro: number) => formatUsd(micro, micro > 0 && micro < 10_000 ? 4 
           <tr v-for="r in data.rows" :key="r.key" data-testid="spend-row" :data-micro="r.cost_micro_usd">
             <td>{{ r.label }}</td>
             <td class="num">{{ r.count }}</td>
-            <td class="num">{{ usd(r.cost_micro_usd) }}</td>
+            <td class="num">{{ formatMoney(r.cost_micro_usd) }}</td>
           </tr>
         </tbody>
         <tfoot>
@@ -155,7 +153,7 @@ const usd = (micro: number) => formatUsd(micro, micro > 0 && micro < 10_000 ? 4 
             <th scope="row">Итого</th>
             <td class="num">{{ data.count }}</td>
             <td class="num">
-              <b>{{ usd(data.total_micro_usd) }}</b>
+              <b>{{ formatMoney(data.total_micro_usd) }}</b>
             </td>
           </tr>
         </tfoot>

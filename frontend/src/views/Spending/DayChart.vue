@@ -2,7 +2,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { SpendingBucket } from '@/api/client'
-import { formatMoney, pluralWorks } from './money'
+import { formatMoney } from '@/utils/format'
+import { pluralWorks } from './money'
 import { longDay, shortDay, tickIndexes } from './period'
 
 const props = defineProps<{ days: SpendingBucket[] }>()

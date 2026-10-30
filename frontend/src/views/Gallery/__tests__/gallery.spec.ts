@@ -158,7 +158,7 @@ describe('галерея: диалог работы', () => {
     expect(d.querySelector('img')?.getAttribute('src')).toContain('/api/generations/2/image?kind=result')
     expect(inDialog('work-prompt')!.textContent).toContain('рюши')
     expect(inDialog('work-author')!.textContent).toBe('designer')
-    expect(inDialog('work-cost')!.textContent).toBe('$0.143')
+    expect(inDialog('work-cost')!.textContent).toBe('0,14\u00a0USD')
     expect(d.textContent).toContain('GPT Image 2.5 Sunburst')
     expect(d.textContent).toContain('1024x1024')
     expect(inDialog('work-inputs')!.querySelectorAll('img')).toHaveLength(1)

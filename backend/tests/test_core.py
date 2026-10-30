@@ -296,3 +296,13 @@ def test_5_uvicorn_access_log_still_formats(settings) -> None:
     line = AccessFormatter("%(client_addr)s %(request_line)s %(status_code)s").format(record)
     assert "GET /api/health" in line and "200" in line
     assert FAKE_KEY not in line
+
+
+def test_connection_can_close_in_another_thread(settings) -> None:
+    """Зависимость `get_db` открывает и закрывает подключение в разных потоках пула."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    dbmod.init_db(settings)
+    conn = dbmod.connect()
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(conn.close).result()
