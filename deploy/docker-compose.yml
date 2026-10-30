@@ -1,0 +1,58 @@
+# Запуск из корня проекта на сервере (/opt/design-studio):
+#   docker compose -f deploy/docker-compose.yml up -d
+# Обычно его вызывает deploy/deploy.sh (сборка, проверка здоровья, откат).
+name: design-studio
+
+services:
+  design-studio:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    # Тег current переключает deploy.sh; прошлая версия хранится как design-studio:previous.
+    image: design-studio:current
+    container_name: design-studio
+    restart: unless-stopped
+    env_file:
+      - ${DESIGN_ENV_FILE:-../.env}
+    environment:
+      DATA_DIR: /data
+      MODELS_FILE: /app/models.json
+      # Caddy приходит из этой подсети: с хоста через опубликованный порт (адрес шлюза .1)
+      # или из своего контейнера, подключённого к сети design-net. Других участников в сети нет.
+      TRUSTED_PROXIES: ${DESIGN_SUBNET:-172.30.57.0/24}
+    # Строго один воркер: очередь генераций, семафор MAX_PARALLEL и счётчик попыток входа
+    # живут в памяти одного процесса. При --workers 2+ каждый процесс получит свой семафор
+    # и свой счётчик, и лимиты «4 одновременно» и «5 попыток входа» перестанут соблюдаться.
+    command:
+      - uvicorn
+      - app.main:app
+      - --host=0.0.0.0
+      - --port=8000
+      - --workers=1
+      - --no-proxy-headers
+    volumes:
+      - design-data:/data
+      # Цены и список моделей правятся на сервере без пересборки: правка + docker restart.
+      - ../models.json:/app/models.json:ro
+    # Порт открыт только на loopback: снаружи сервис доступен лишь через Caddy, ufw не меняется.
+    ports:
+      - "127.0.0.1:${DESIGN_PORT:-8000}:8000"
+    networks:
+      - design-net
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  design-data:
+    name: design-data
+
+networks:
+  design-net:
+    name: design-net
+    ipam:
+      config:
+        - subnet: ${DESIGN_SUBNET:-172.30.57.0/24}

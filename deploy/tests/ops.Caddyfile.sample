@@ -1,0 +1,10 @@
+# Пример конфига VDS до деплоя (для проверки caddy_check.sh без доступа к серверу).
+# Настоящий файл снимает разведка T07/T16 — см. deploy/README.md.
+{
+	email admin@proftex.tech
+}
+
+ops.proftex.tech {
+	encode gzip
+	reverse_proxy 127.0.0.1:3001
+}
