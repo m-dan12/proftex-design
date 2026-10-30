@@ -169,17 +169,23 @@ describe('галерея: диалог работы', () => {
 
   it('«Править дальше» и «Повторить» ведут на экран генерации с ?ref и ?repeat', async () => {
     await login()
+    // Экран генерации сам убирает ?ref/?repeat из адреса после чтения,
+    // поэтому проверяем адрес перехода, а не адрес после него.
     const first = await mountApp('/gallery?id=2')
+    const firstTargets: string[] = []
+    first.router.afterEach((to) => void firstTargets.push(to.fullPath))
     inDialog('edit-further')!.click()
     await waitForRoute(first.router, 'generate')
     expect(first.router.currentRoute.value.name).toBe('generate')
-    expect(first.router.currentRoute.value.query).toEqual({ ref: '2' })
+    expect(firstTargets).toContain('/generate?ref=2')
     first.wrapper.unmount()
 
     const second = await mountApp('/gallery?tab=shared&id=3')
+    const secondTargets: string[] = []
+    second.router.afterEach((to) => void secondTargets.push(to.fullPath))
     inDialog('repeat-work')!.click()
     await waitForRoute(second.router, 'generate')
-    expect(second.router.currentRoute.value.query).toEqual({ repeat: '3' })
+    expect(secondTargets).toContain('/generate?repeat=3')
   })
 
   it('Esc закрывает диалог, стрелки листают', async () => {
