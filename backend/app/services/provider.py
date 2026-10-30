@@ -27,6 +27,7 @@ log = logging.getLogger(__name__)
 
 TIMEOUT_S = 300.0  # NFR-10
 RETRY_DELAY_S = 2.0
+MOCK_DELAY_S = (2, 5)  # FR-17: заглушка «думает» 2–5 с
 DEFAULT_SIZE = (1024, 1024)  # что даёт size=auto в заглушке
 
 PIL_FORMATS = {"jpeg": "JPEG", "png": "PNG", "webp": "WEBP"}
@@ -261,7 +262,7 @@ class OpenAIProvider:
 class MockProvider:
     """Тестовый режим (FR-17): картинки нужного размера и формата, фиктивные токены."""
 
-    def __init__(self, delay: tuple[float, float] = (2.0, 5.0)) -> None:
+    def __init__(self, delay: tuple[float, float] = MOCK_DELAY_S) -> None:
         self._delay = delay
 
     async def generate(
