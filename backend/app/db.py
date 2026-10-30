@@ -102,9 +102,13 @@ def now_iso() -> str:
 
 
 def connect(path: Path | str | None = None) -> sqlite3.Connection:
-    """Новое подключение с нужными PRAGMA. Подключения не делятся между потоками."""
+    """Новое подключение с нужными PRAGMA. Одновременно им пользуется один запрос.
+
+    `check_same_thread=False`: зависимость `get_db` — генератор, и FastAPI выполняет его начало
+    и конец в потоках пула, не обязательно в одном; без флага закрытие падало с ProgrammingError.
+    """
     path = get_settings().db_path if path is None else path
-    conn = sqlite3.connect(path, timeout=BUSY_TIMEOUT_MS / 1000)
+    conn = sqlite3.connect(path, timeout=BUSY_TIMEOUT_MS / 1000, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute(f"PRAGMA busy_timeout = {BUSY_TIMEOUT_MS}")

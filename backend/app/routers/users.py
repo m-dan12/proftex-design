@@ -12,11 +12,11 @@ from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field, model_validator
 
 from app.db import get_db
-from app.deps import ApiRoute, CurrentUser, generate_password, hash_password, require_admin
+from app.deps import CurrentUser, generate_password, hash_password, require_admin
 
 log = logging.getLogger(__name__)
 
-router = APIRouter(route_class=ApiRoute)
+router = APIRouter()
 
 USERNAME_PATTERN = r"^[A-Za-z0-9._-]{3,32}$"
 

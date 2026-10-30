@@ -3,7 +3,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { api, ApiError, unwrap, type MySpending } from '@/api/client'
 import DayChart from './DayChart.vue'
-import { formatMoney, pluralWorks } from './money'
+import { formatMoney } from '@/utils/format'
+import { pluralWorks } from './money'
 import { customRangeError, fillDays, longDay, PERIODS, presetRange, type PeriodKind } from './period'
 
 const kind = ref<PeriodKind>('30d')

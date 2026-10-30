@@ -2,7 +2,7 @@
 // Один запуск: варианты рядом, у каждого статус, а у готового — «Править дальше», «Повторить», «Скачать».
 import { computed } from 'vue'
 import { imageUrl, type Generation, type GenerationStatus } from '@/api/client'
-import { formatUsd } from '@/utils/format'
+import { formatMoney } from '@/utils/format'
 import type { Batch } from './tracker'
 
 const props = defineProps<{ batch: Batch }>()
@@ -29,7 +29,7 @@ const allDone = computed(() => variants.value.every((v) => v.g?.status === 'done
       <p class="prompt" :title="props.batch.prompt">{{ props.batch.prompt }}</p>
       <p class="muted meta">
         <template v-if="first">{{ first.model }} · {{ first.quality }} · {{ first.size }}</template>
-        <template v-if="allDone"> · {{ formatUsd(total, 3) }}</template>
+        <template v-if="allDone"> · {{ formatMoney(total) }}</template>
       </p>
     </header>
     <div class="variants" :class="`n${variants.length}`">

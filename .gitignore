@@ -15,3 +15,5 @@ data/
 *.db-shm
 test-results/
 playwright-report/
+e2e/.data/
+e2e/node_modules

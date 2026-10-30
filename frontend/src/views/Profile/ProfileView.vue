@@ -3,7 +3,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth } from '@/stores/auth'
-import { formatMoney } from '../Spending/money'
+import { formatMoney } from '@/utils/format'
 import PasswordForm from './PasswordForm.vue'
 
 const router = useRouter()

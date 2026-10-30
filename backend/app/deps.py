@@ -14,14 +14,11 @@ import hmac
 import json
 import secrets
 import time
-from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from typing import Any
 
 from fastapi import Depends, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from fastapi.routing import APIRoute
 
 from app.config import Settings, get_settings
 from app.db import session
@@ -194,6 +191,7 @@ def require_admin(user: CurrentUser = Depends(current_user)) -> CurrentUser:
 
 
 # --- Ошибки валидации строкой, как в контракте ----------------------------------
+# Единый обработчик 422 подключён в `main.py`.
 
 
 def validation_message(exc: RequestValidationError) -> str:
@@ -221,18 +219,3 @@ def validation_message(exc: RequestValidationError) -> str:
     if not field:
         return "Неверное тело запроса"
     return f"Поле «{field}»: неверное значение"
-
-
-class ApiRoute(APIRoute):
-    """Маршрут, у которого ошибка валидации — 422 с `{"detail": "текст"}`, как в контракте."""
-
-    def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
-        handler = super().get_route_handler()
-
-        async def route_handler(request: Request) -> Response:
-            try:
-                return await handler(request)
-            except RequestValidationError as exc:
-                return JSONResponse(status_code=422, content={"detail": validation_message(exc)})
-
-        return route_handler

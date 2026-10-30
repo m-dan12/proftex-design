@@ -32,7 +32,7 @@ def test_operation_count() -> None:
 def test_operation_is_mounted(method: str, path: str) -> None:
     client = TestClient(app, raise_server_exceptions=False)
     response = client.request(method, path.replace("{id}", "1"))
-    assert response.status_code not in (404, 405), response.text
+    assert response.status_code not in (404, 405, 501), response.text
 
 
 def test_no_routes_outside_contract() -> None:

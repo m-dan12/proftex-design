@@ -153,7 +153,7 @@ describe('T14 · 4: расходы', () => {
     const total = wrapper.find('[data-testid="spend-total"]')
     expect(sum).toBe(expected)
     expect(Number(total.attributes('data-micro'))).toBe(expected)
-    expect(total.text()).toContain('$0.43')
+    expect(total.text()).toContain('0,43\u00a0USD')
   })
 
   it('ссылка на CSV содержит те же период и группировку', async () => {

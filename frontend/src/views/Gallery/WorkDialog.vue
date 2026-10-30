@@ -4,7 +4,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api, ApiError, imageUrl, unwrap, type Generation } from '@/api/client'
-import { formatDateTime, formatUsd } from '@/utils/format'
+import { formatDateTime, formatMoney } from '@/utils/format'
 import { useFocusTrap } from './useFocusTrap'
 
 const props = defineProps<{
@@ -192,7 +192,7 @@ onBeforeUnmount(() => {
               <dt>Формат</dt>
               <dd>{{ work.output_format.toUpperCase() }}</dd>
               <dt>Стоимость</dt>
-              <dd data-testid="work-cost">{{ formatUsd(work.cost_micro_usd, 3) }}</dd>
+              <dd data-testid="work-cost">{{ formatMoney(work.cost_micro_usd) }}</dd>
               <dt>Автор</dt>
               <dd data-testid="work-author">{{ work.username }}</dd>
               <dt>Время</dt>

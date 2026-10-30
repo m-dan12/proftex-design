@@ -179,11 +179,11 @@ describe('экран генерации: поля формы и цена', () =>
 
   it('примерная цена = запасная цена × число вариантов', async () => {
     const { wrapper } = await open()
-    expect(wrapper.find('[data-testid="price"]').text()).toBe('≈ $0.17') // 167000 × 1
+    expect(wrapper.find('[data-testid="price"]').text()).toBe('≈ 0,17\u00a0USD') // 167000 × 1
     await wrapper.find('#gen-n').setValue('3')
-    expect(wrapper.find('[data-testid="price"]').text()).toBe('≈ $0.50') // 167000 × 3
+    expect(wrapper.find('[data-testid="price"]').text()).toBe('≈ 0,50\u00a0USD') // 167000 × 3
     await wrapper.find('#gen-quality').setValue('low')
-    expect(wrapper.find('[data-testid="price"]').text()).toBe('≈ $0.03') // 11000 × 3
+    expect(wrapper.find('[data-testid="price"]').text()).toBe('≈ 0,03\u00a0USD') // 11000 × 3
   })
 
   it('модель без input_fidelity прячет переключатель, лишние варианты и форматы', async () => {
@@ -198,7 +198,7 @@ describe('экран генерации: поля формы и цена', () =>
     expect(select(wrapper, 'gen-format').value).toBe('jpeg')
     // «high» есть и у этой модели — качество сохраняется
     expect(select(wrapper, 'gen-quality').value).toBe('high')
-    expect(wrapper.find('[data-testid="price"]').text()).toBe('≈ $0.07') // 36000 × 2
+    expect(wrapper.find('[data-testid="price"]').text()).toBe('≈ 0,07\u00a0USD') // 36000 × 2
   })
 
   it('запуск отправляет multipart с настройками и файлами и показывает варианты рядом', async () => {
