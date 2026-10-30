@@ -8,6 +8,8 @@ dependencies = [
     "python-multipart>=0.0.9",
     "pillow>=10.4",
     "openai>=1.50",
+    # Часовой пояс Europe/Moscow в slim-образе, где нет системной базы зон.
+    "tzdata>=2024.1",
 ]
 
 [project.optional-dependencies]
