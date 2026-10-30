@@ -1,0 +1,690 @@
+openapi: 3.1.0
+info:
+  title: design.proftex.tech API
+  version: 1.0.0
+  description: |
+    Контракт сервиса генерации изображений для дизайнеров (ТЗ, редакция 2).
+    Заморожен после T01: правки только через заявку оркестратору (задачи T01.x).
+
+    Соглашения:
+    - Все деньги — целые микродоллары (`*_micro_usd`, 1 USD = 1 000 000).
+    - Даты периода (`from`, `to`) — `YYYY-MM-DD` включительно, сутки по Europe/Moscow.
+    - Время — ISO 8601 в UTC.
+    - Любая ошибка — `{"detail": "..."}` с понятным русским текстом.
+servers:
+  - url: /
+security:
+  - cookieAuth: []
+tags:
+  - name: auth
+  - name: models
+  - name: generations
+  - name: spending
+  - name: admin
+  - name: health
+
+paths:
+  /api/auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: Вход по логину и паролю
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LoginRequest'}
+      responses:
+        '200':
+          description: Успешный вход. Сессия ставится в cookie на 30 дней (HttpOnly, Secure, SameSite=Lax).
+          headers:
+            Set-Cookie:
+              schema: {type: string}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/User'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: Выход, cookie сессии удаляется
+      responses:
+        '204': {description: Сессия завершена}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/me:
+    get:
+      tags: [auth]
+      operationId: getMe
+      summary: Текущий пользователь
+      responses:
+        '200':
+          description: Профиль
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/User'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/me/password:
+    post:
+      tags: [auth]
+      operationId: changeMyPassword
+      summary: Смена своего пароля (нужен старый пароль)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PasswordChange'}
+      responses:
+        '204': {description: Пароль изменён}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+
+  /api/models:
+    get:
+      tags: [models]
+      operationId: listModels
+      summary: Модели, качества, размеры, форматы и запасные цены из models.json
+      responses:
+        '200':
+          description: Список моделей
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ModelsResponse'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/generations:
+    post:
+      tags: [generations]
+      operationId: createGeneration
+      summary: Создать генерацию на 1–4 варианта (фоновая задача)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: {$ref: '#/components/schemas/GenerationCreate'}
+            encoding:
+              files:
+                contentType: image/png, image/jpeg, image/webp
+      responses:
+        '202':
+          description: Задачи поставлены в очередь со статусом pending
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/GenerationCreated'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+    get:
+      tags: [generations]
+      operationId: listGenerations
+      summary: Работы для галереи, от новых к старым, курсорная пагинация
+      parameters:
+        - name: scope
+          in: query
+          required: true
+          schema: {type: string, enum: [mine, shared]}
+        - name: cursor
+          in: query
+          description: Значение next_cursor с прошлой страницы
+          schema: {type: string}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 50, default: 50}
+        - name: author_id
+          in: query
+          description: Фильтр по автору (для scope=shared)
+          schema: {type: integer}
+      responses:
+        '200':
+          description: Страница работ
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/GenerationList'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+
+  /api/generations/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [generations]
+      operationId: getGeneration
+      summary: Карточка работы (своя, общая или любая для администратора)
+      responses:
+        '200':
+          description: Работа
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Generation'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [generations]
+      operationId: updateGeneration
+      summary: Переключить «Видна всем» (автор или администратор)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/GenerationPatch'}
+      responses:
+        '200':
+          description: Обновлённая работа
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Generation'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+    delete:
+      tags: [generations]
+      operationId: deleteGeneration
+      summary: Удалить работу и её файлы (автор или администратор)
+      responses:
+        '204': {description: Удалено}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409':
+          description: Работа ещё выполняется (pending/running)
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+
+  /api/generations/{id}/image:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [generations]
+      operationId: getGenerationImage
+      summary: Файл работы с проверкой прав (чужая приватная — 404)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: kind
+          in: query
+          required: true
+          schema: {type: string, enum: [result, thumb, input]}
+        - name: idx
+          in: query
+          description: Номер референса, обязателен для kind=input
+          schema: {type: integer, minimum: 0, maximum: 9}
+        - name: download
+          in: query
+          description: true — заголовок Content-Disposition attachment
+          schema: {type: boolean, default: false}
+      responses:
+        '200':
+          description: Изображение
+          content:
+            image/png:
+              schema: {type: string, format: binary}
+            image/jpeg:
+              schema: {type: string, format: binary}
+            image/webp:
+              schema: {type: string, format: binary}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+
+  /api/spending/me:
+    get:
+      tags: [spending]
+      operationId: getMySpending
+      summary: Мои расходы за период
+      parameters:
+        - $ref: '#/components/parameters/FromDate'
+        - $ref: '#/components/parameters/ToDate'
+      responses:
+        '200':
+          description: Итог, разбивка по дням и моделям
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MySpending'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+
+  /api/admin/spending:
+    get:
+      tags: [admin, spending]
+      operationId: getAdminSpending
+      summary: Расходы всех пользователей
+      parameters:
+        - $ref: '#/components/parameters/FromDate'
+        - $ref: '#/components/parameters/ToDate'
+        - $ref: '#/components/parameters/SpendingGroup'
+      responses:
+        '200':
+          description: Строки группировки и итог
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdminSpending'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+
+  /api/admin/spending.csv:
+    get:
+      tags: [admin, spending]
+      operationId: getAdminSpendingCsv
+      summary: Выгрузка расходов в CSV (UTF-8 с BOM, разделитель «;»)
+      parameters:
+        - $ref: '#/components/parameters/FromDate'
+        - $ref: '#/components/parameters/ToDate'
+        - $ref: '#/components/parameters/SpendingGroup'
+      responses:
+        '200':
+          description: CSV-файл; колонки key;label;count;cost_usd, последняя строка — итог
+          content:
+            text/csv:
+              schema: {type: string}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+
+  /api/admin/users:
+    get:
+      tags: [admin]
+      operationId: listUsers
+      summary: Все пользователи
+      responses:
+        '200':
+          description: Список
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/UserList'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+    post:
+      tags: [admin]
+      operationId: createUser
+      summary: Создать пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UserCreate'}
+      responses:
+        '201':
+          description: Создан
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/User'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+
+  /api/admin/users/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [admin]
+      operationId: updateUser
+      summary: Блокировка и разблокировка, роль, лимит (лимит в v1 не проверяется)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UserPatch'}
+      responses:
+        '200':
+          description: Обновлённый пользователь
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/User'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409':
+          description: Нельзя заблокировать или лишить прав последнего активного администратора
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+
+  /api/admin/users/{id}/reset-password:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [admin]
+      operationId: resetUserPassword
+      summary: Сбросить пароль; новый пароль (12 символов) возвращается один раз
+      responses:
+        '200':
+          description: Новый пароль. В базе хранится только хэш, повторно получить его нельзя.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PasswordReset'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /api/health:
+    get:
+      tags: [health]
+      operationId: getHealth
+      summary: Живость, режим и свободное место
+      security: []
+      responses:
+        '200':
+          description: Сервис отвечает (status=degraded при свободном месте ниже 10%)
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Health'}
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: session
+
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema: {type: integer, minimum: 1}
+    FromDate:
+      name: from
+      in: query
+      required: true
+      schema: {type: string, format: date}
+    ToDate:
+      name: to
+      in: query
+      required: true
+      schema: {type: string, format: date}
+    SpendingGroup:
+      name: group
+      in: query
+      required: true
+      schema: {type: string, enum: [user, model, day]}
+
+  responses:
+    Unauthorized:
+      description: Не авторизован, сессия истекла или пользователь заблокирован
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Forbidden:
+      description: Нет прав
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    NotFound:
+      description: Не найдено или нет доступа
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Conflict:
+      description: Конфликт (например, логин занят)
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    TooLarge:
+      description: Файл больше 20 МБ или запрос слишком большой
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Unprocessable:
+      description: Неверные данные (не изображение, неизвестная модель, недопустимый параметр)
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    TooManyRequests:
+      description: Слишком много попыток входа или исчерпан дневной бюджет сервиса
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+
+  schemas:
+    Error:
+      type: object
+      required: [detail]
+      properties:
+        detail: {type: string}
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: {type: string, minLength: 1, maxLength: 64}
+        password: {type: string, minLength: 1, maxLength: 256}
+
+    PasswordChange:
+      type: object
+      required: [old_password, new_password]
+      properties:
+        old_password: {type: string, minLength: 1, maxLength: 256}
+        new_password: {type: string, minLength: 8, maxLength: 256}
+
+    PasswordReset:
+      type: object
+      required: [password]
+      properties:
+        password: {type: string, minLength: 12, maxLength: 12}
+
+    User:
+      type: object
+      required: [id, username, is_admin, is_active, daily_limit_micro_usd, created_at]
+      properties:
+        id: {type: integer}
+        username: {type: string}
+        is_admin: {type: boolean}
+        is_active: {type: boolean}
+        daily_limit_micro_usd:
+          type: [integer, 'null']
+          minimum: 0
+          description: Задел под лимиты; null — без лимита. В v1 не проверяется.
+        created_at: {type: string, format: date-time}
+
+    UserList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/User'}
+
+    UserCreate:
+      type: object
+      required: [username, password]
+      properties:
+        username: {type: string, pattern: '^[A-Za-z0-9._-]{3,32}$'}
+        password: {type: string, minLength: 8, maxLength: 256}
+        is_admin: {type: boolean, default: false}
+
+    UserPatch:
+      type: object
+      minProperties: 1
+      properties:
+        is_active: {type: boolean}
+        is_admin: {type: boolean}
+        daily_limit_micro_usd: {type: [integer, 'null'], minimum: 0}
+
+    ModelsResponse:
+      type: object
+      required: [mode, default_model, models]
+      properties:
+        mode: {type: string, enum: [mock, openai]}
+        default_model: {type: string}
+        models:
+          type: array
+          items: {$ref: '#/components/schemas/ModelInfo'}
+
+    ModelInfo:
+      type: object
+      required: [id, title, qualities, default_quality, sizes, output_formats, supports_input_fidelity, max_n, fallback_per_image_micro_usd]
+      properties:
+        id: {type: string}
+        title: {type: string}
+        qualities:
+          type: array
+          items: {type: string}
+        default_quality: {type: string}
+        sizes:
+          type: array
+          items: {type: string}
+          description: Например auto, 1024x1024, 1536x1024, 1024x1536
+        output_formats:
+          type: array
+          items: {type: string, enum: [jpeg, png, webp]}
+        supports_input_fidelity: {type: boolean}
+        max_n: {type: integer, minimum: 1, maximum: 4}
+        fallback_per_image_micro_usd:
+          type: object
+          description: Цена одной картинки по качеству — для примерной цены в форме и для расчёта, если API не вернул токены
+          additionalProperties: {type: integer, minimum: 0}
+
+    GenerationCreate:
+      type: object
+      required: [prompt, model, quality, size]
+      properties:
+        prompt: {type: string, minLength: 1, maxLength: 4000}
+        model: {type: string}
+        quality: {type: string}
+        size: {type: string}
+        n: {type: integer, minimum: 1, maximum: 4, default: 1}
+        input_fidelity:
+          type: string
+          enum: [low, high]
+          description: Только для моделей с supports_input_fidelity и при наличии референсов; по умолчанию high
+        output_format: {type: string, enum: [jpeg, png, webp], default: jpeg}
+        shared: {type: boolean, default: true}
+        parent_id:
+          type: integer
+          description: Работа, от которой идёт «Править дальше»; должна быть среди source_ids
+        source_ids:
+          type: array
+          description: Прошлые работы как референсы (своя, общая; приватная чужая — отказ)
+          items: {type: integer}
+        files:
+          type: array
+          maxItems: 10
+          description: Загруженные референсы; вместе с source_ids не более 10
+          items: {type: string, format: binary}
+
+    GenerationCreated:
+      type: object
+      required: [batch_id, ids]
+      properties:
+        batch_id: {type: string}
+        ids:
+          type: array
+          minItems: 1
+          maxItems: 4
+          items: {type: integer}
+
+    GenerationStatus:
+      type: string
+      enum: [pending, running, done, error]
+
+    GenerationInput:
+      type: object
+      required: [idx, filename, source_generation_id]
+      properties:
+        idx: {type: integer, minimum: 0, maximum: 9}
+        filename: {type: [string, 'null']}
+        source_generation_id: {type: [integer, 'null']}
+
+    Generation:
+      type: object
+      required: [id, user_id, username, parent_id, batch_id, variant_idx, model, quality, size, input_fidelity, output_format, prompt, status, error, shared, input_text_tokens, input_image_tokens, output_tokens, cost_micro_usd, inputs, created_at, finished_at]
+      properties:
+        id: {type: integer}
+        user_id: {type: integer}
+        username: {type: string}
+        parent_id: {type: [integer, 'null']}
+        batch_id: {type: string}
+        variant_idx: {type: integer, minimum: 0, maximum: 3}
+        model: {type: string}
+        quality: {type: string}
+        size: {type: string}
+        input_fidelity: {type: [string, 'null'], enum: [low, high, null]}
+        output_format: {type: string, enum: [jpeg, png, webp]}
+        prompt: {type: string}
+        status: {$ref: '#/components/schemas/GenerationStatus'}
+        error: {type: [string, 'null']}
+        shared: {type: boolean}
+        input_text_tokens: {type: integer, minimum: 0}
+        input_image_tokens: {type: integer, minimum: 0}
+        output_tokens: {type: integer, minimum: 0}
+        cost_micro_usd: {type: integer, minimum: 0}
+        inputs:
+          type: array
+          items: {$ref: '#/components/schemas/GenerationInput'}
+        created_at: {type: string, format: date-time}
+        finished_at: {type: [string, 'null'], format: date-time}
+
+    GenerationPatch:
+      type: object
+      required: [shared]
+      properties:
+        shared: {type: boolean}
+
+    GenerationList:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/Generation'}
+        next_cursor: {type: [string, 'null']}
+
+    SpendingBucket:
+      type: object
+      required: [key, label, count, cost_micro_usd]
+      properties:
+        key: {type: string, description: 'id пользователя, id модели или дата YYYY-MM-DD'}
+        label: {type: string}
+        count: {type: integer, minimum: 0}
+        cost_micro_usd: {type: integer, minimum: 0}
+
+    MySpending:
+      type: object
+      required: [from, to, total_micro_usd, count, by_day, by_model]
+      properties:
+        from: {type: string, format: date}
+        to: {type: string, format: date}
+        total_micro_usd: {type: integer, minimum: 0}
+        count: {type: integer, minimum: 0}
+        by_day:
+          type: array
+          items: {$ref: '#/components/schemas/SpendingBucket'}
+        by_model:
+          type: array
+          items: {$ref: '#/components/schemas/SpendingBucket'}
+
+    AdminSpending:
+      type: object
+      required: [from, to, group, total_micro_usd, count, rows]
+      properties:
+        from: {type: string, format: date}
+        to: {type: string, format: date}
+        group: {type: string, enum: [user, model, day]}
+        total_micro_usd: {type: integer, minimum: 0}
+        count: {type: integer, minimum: 0}
+        rows:
+          type: array
+          items: {$ref: '#/components/schemas/SpendingBucket'}
+
+    Health:
+      type: object
+      required: [status, mode, disk_free_pct]
+      properties:
+        status: {type: string, enum: [ok, degraded]}
+        mode: {type: string, enum: [mock, openai]}
+        disk_free_pct: {type: number, minimum: 0, maximum: 100}
